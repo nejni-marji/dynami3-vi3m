@@ -72,6 +72,46 @@ def generate_config(config):
 
 	chains, modes = validate_config(config)
 
+	def mode_to_var(mode):
+		# conversion to preserve capitalization
+		return '$vi3m_' + ''.join([i + '_' if i.isupper() else i for i in list(mode)])
+
+	def get_mode_name(mode, display = False):
+		display = True
+		if display:
+			# Show all possible next keys.
+			elems  = [i[-1] for i in chains + modes if mode == i[:-1]]
+
+			# Most of these are disabled for several reasons. They're too long
+			# or can break the config. I'm leaving them here, though, in case
+			# they become useful.
+
+			# # Show all possible next inputs, going multiple keys deep.
+			# elems = [i[len(mode):] for i in chains if i.startswith(mode)]
+			# # Show all possible binds that could be run.
+			# elems = [binds[mode+i] for i in sub_elems]
+			# # Show all possible next inputs, and their binds.
+			# elems = ['{}:{}'.format(i, binds[mode+i]) for i in sub_elems]
+
+			elems.sort()
+			sub_string = ', '.join(elems)
+			modestring = '%s%s (%s)' % (p_sym, mode, sub_string)
+		else:
+			modestring = '%s%s' % (p_sym, mode)
+		return modestring
+
+	# def get_modestring(mode):
+	# 	return mode_to_var(mode)
+
+	def gen_modevars():
+		print('set $vi3m_ ' + get_mode_name(''))
+		for mode in modes:
+			var = mode_to_var(mode)
+			modestr = get_mode_name(mode)
+			print(f'set {var} {modestr}')
+
+	gen_modevars()
+
 	def gen_mode_exits():
 		print('\tbindsym Return mode "default"')
 		print('\tbindsym Escape mode "default"')
@@ -79,8 +119,9 @@ def generate_config(config):
 		print('\tbindsym Control+bracketleft mode "default"')
 
 	def gen_prefix_mode():
-		print('bindsym %s mode "%s"' % (p_key, p_sym))
-		print('mode "%s" {' % (p_sym))
+		prefix_modestring = mode_to_var('')
+		print('bindsym %s mode "%s"' % (p_key, prefix_modestring))
+		print('mode "%s" {' % (prefix_modestring))
 		gen_mode_exits()
 		print('\tbindsym %s mode "default"' % (p_key))
 		print('\tbindsym BackSpace mode "default"')
@@ -100,17 +141,17 @@ def generate_config(config):
 				key = mode
 				if not key == key.lower():
 					key = 'Shift+' + key.lower()
-				print('\tbindsym %s mode "%s%s"' % (key, p_sym, mode))
+				print('\tbindsym %s mode "%s"' % (key, mode_to_var(mode)))
 		print('}')
 		print()
 
 	def gen_mode(mode):
 		elems = [i for i in chains + modes if mode == i[:-1]]
 		elems.sort()
-		print('mode "%s%s" {' % (p_sym, mode))
+		print('mode "%s" {' % mode_to_var(mode))
 		gen_mode_exits()
 		print('\tbindsym %s mode "default"' % (p_key))
-		print('\tbindsym BackSpace mode "%s%s"' % (p_sym, mode[:-1]))
+		print('\tbindsym BackSpace mode "%s"' % mode_to_var(mode[:-1]))
 		for elem in elems:
 			key = elem.replace(mode, '', 1)
 			if not key == key.lower():
@@ -120,7 +161,7 @@ def generate_config(config):
 					% (key, binds[elem]
 				))
 			else:
-				print('\tbindsym %s mode "%s%s"' % (key, p_sym, elem))
+				print('\tbindsym %s mode "%s"' % (key, mode_to_var(elem)))
 		print('}')
 		print()
 
